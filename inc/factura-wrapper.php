@@ -243,6 +243,7 @@ class FacturaWrapper{
       <option value="27">27 - A satisfacción del acreedor</option>
       <option value="28">28 - Tarjeta de débito</option>
       <option value="29">29 - Tarjeta de servicios</option>
+      <option value="31">31 - Intermediario de pagos</option>
       <option value="99">99 - Por definir</option>
       </select>
       </div>
@@ -416,7 +417,7 @@ class FacturaWrapper{
 
       $configEntity = self::getConfigEntity();
 
-      $url     = $configEntity['apiurl'] . 'v3/cfdi33/invoice/' . $uid . '/email';
+      $url     = $configEntity['apiurl'] . 'v3/cfdi33/' . $uid . '/email';
       $request = 'GET';
 
       return WrapperApi::callCurl($url, $request);
@@ -428,7 +429,7 @@ class FacturaWrapper{
     * @param Int $uid
     * @return Object
     */
-    static function cancelInvoice($uid){
+    static function cancelInvoice($uid, $motivo, $folioSustituto){
       if(!isset($uid)){
         return array(
           'Error' => 'No se ha recibido el id de la factura.',
@@ -437,10 +438,11 @@ class FacturaWrapper{
 
       $configEntity = self::getConfigEntity();
 
-      $url     = $configEntity['apiurl'] . 'v3/cfdi33/invoice/' . $uid . '/cancel';
-      $request = 'GET';
+      $url = $configEntity['apiurl'] . 'v3/cfdi33/' . $uid . '/cancel';
+      $data = ['motivo' => $motivo, 'folioSustituto' => $folioSustituto];
+      $request = 'POST';
 
-      return WrapperApi::callCurl($url, $request);
+      return WrapperApi::callCurl($url, $request, $data);
     }
 
     /**
@@ -462,7 +464,7 @@ class FacturaWrapper{
 
       // $url = $configEntity['apiurl'] . 'invoices?rfc=' . $rfc . '&num_order=' . $orderId;
       $url     = $configEntity['apiurl'] . 'v3/cfdi33/list?rfc=' . $rfc;
-      // $url = 'https://factura.com/api/v3/cfdi33/list' . '?rfc=' . $rfc;
+      //$url = 'https://factura.com/api/v3/cfdi33/list' . '?rfc=' . $rfc;
       $request = 'GET';
 
       // $invoideData = WrapperApi::callCurl($url, $request)->data;
@@ -521,6 +523,9 @@ class FacturaWrapper{
 
       $order = CommerceHelper::getOrderById($orderId);
 
+      if(gettype($order) != 'object'){
+        return array('Error' => 'El pedido no existe');
+      }
       return $order;
     }
 

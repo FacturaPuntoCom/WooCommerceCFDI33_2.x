@@ -2,7 +2,7 @@
 
 jQuery(document).ready( function($) {
 
-  $('#invoicesTable').DataTable({
+  const table = $('#invoicesTable').DataTable({
     "aoColumnDefs": [
       { 'bSortable': false, 'aTargets': [ 6,7,8 ] }
     ],
@@ -29,8 +29,80 @@ jQuery(document).ready( function($) {
         "sortAscending":  ": activar para ordenar la columna ascendentemente",
         "sortDescending": ": activar para ordenar la columna descendentemente"
       }
+    },
+    drawCallback: function(settings){
+
+      $('.cancel_invoice').unbind().on('click', function(e){
+        $('#motivo').val('01');
+        $('#uid').val('');
+        $('#grupoUID').show();  
+        $('.remodal .cancelacion').show();
+        $('.remodal .cancelando').hide();
+        $('.remodal .resultado').hide();    
+        var inst = $('[data-remodal-id=modalCancelacion]').remodal();
+        inst.open();
+      });
+
+      $('.download_file').unbind().on('click', function(e){
+        e.preventDefault();
+    
+        var uid = jQuery(this).attr('data-uid');
+        var type = jQuery(this).attr('data-type');
+        var data = {
+          action : 'download_file',
+          uid    : uid,
+          type   : type,
+        };
+    
+        $.post(myAjax.ajaxurl, data, function(response){
+          var b64 = response.file.toString();
+    
+          // Decodificar la cadena para mostrar contenido pdf
+          var bin = atob(b64);
+    
+          // Insertar el link que contendrá el archivo pdf
+          var link = document.createElement('a');
+          if(type == 'pdf') {
+            link.download = uid + '.pdf';
+          } else {
+            link.download = uid + '.xml';
+          }
+    
+          link.href = 'data:application/octet-stream;base64,' + b64;
+          document.body.appendChild(link);
+          link.click();
+    
+          setTimeout(function() {
+            link.remove();
+          }, 0);
+        }, "json");
+    
+      });
+    
+      $('.send_invoice').unbind().on('click', function(e){
+        e.preventDefault();
+        $(this).html('Enviando factura');
+        $('.send_invoice').attr("disabled", true);
+    
+        var invoiceId = jQuery(this).attr('data-uid');
+        var data = {
+          action : 'send_invoice',
+          uid    : invoiceId
+        };
+    
+        $.post(myAjax.ajaxurl, data, function(response){
+          console.log(response)
+          $('.send_invoice').attr("disabled", false);
+          alert(response.message);
+        }, "json");
+    
+      });
+
     }
+
   });
+
+  
   //Save configuration
   if( $('#facturacom_settings').length ){
 
@@ -131,98 +203,53 @@ jQuery(document).ready( function($) {
     }
   }
 
-  $('.download_file').unbind().on('click', function(e){
-    e.preventDefault();
+ 
 
-    var uid = jQuery(this).attr('data-uid');
-    var type = jQuery(this).attr('data-type');
+
+  $('#motivo').on('change', function(){
+    if(this.value == "01"){
+      $('#grupoUID').show();
+    } else {
+      $('#grupoUID').hide();
+    }
+  });
+  
+  
+
+  $('.si-cancelar').unbind().on('click', function(e){
+
+    let motivo = $('#motivo').val();
+    let folioSustituto = $('#uid').val();
+
+    if(motivo == '01' && folioSustituto == ''){
+      return;
+    }
+
+    let invoiceId = $('.cancel_invoice').attr('data-uid');
+
+    $('.remodal .cancelacion').hide();
+    $('.remodal .cancelando').show();
+
     var data = {
-      action : 'download_file',
-      uid    : uid,
-      type   : type,
+      action : 'cancel_invoice',
+      uid    : invoiceId,
+      motivo,
+      folioSustituto
     };
 
     $.post(myAjax.ajaxurl, data, function(response){
-      var b64 = response.file.toString();
-
-      // Decodificar la cadena para mostrar contenido pdf
-      var bin = atob(b64);
-
-      // Insertar el link que contendrá el archivo pdf
-      var link = document.createElement('a');
-      if(type == 'pdf') {
-        link.download = uid + '.pdf';
-      } else {
-        link.download = uid + '.xml';
+      if(response.response == 'success'){
+        $('#message-response-one').text(response.message);
+      } else{
+        $('#message-response-one').text(response.message);
       }
 
-      link.href = 'data:application/octet-stream;base64,' + b64;
-      document.body.appendChild(link);
-      link.click();
+      $('.remodal .cancelando').hide();
+      $('.remodal .resultado').show();
 
-      setTimeout(function() {
-        link.remove();
-      }, 0);
     }, "json");
-
-  });
-
-  $('.send_invoice').unbind().on('click', function(e){
-    e.preventDefault();
-    $(this).html('Enviando factura');
-    $('.send_invoice').attr("disabled", true);
-
-    var invoiceId = jQuery(this).attr('data-uid');
-    var data = {
-      action : 'send_invoice',
-      uid    : invoiceId
-    };
-
-    $.post(myAjax.ajaxurl, data, function(response){
-      $('.send_invoice').attr("disabled", false);
-      alert(response.message);
-    }, "json");
-
-  });
-
-  $('.cancel_invoice').unbind().on('click', function(e){
-    e.preventDefault();
-
-    $(this).html('Cancelando');
-    $('.cancel_invoice').attr("disabled", true);
-    var invoiceId = $(this).attr('data-uid');
-
-    bootbox.confirm({
-      message: "¿Estás seguro de cancelar esta factura?",
-      buttons: {
-        cancel: {
-          label: 'No cancelar'
-        },
-        confirm: {
-          label: 'Cancelar'
-        }
-      },
-      callback: function(result){
-        if(result){
-          var data = {
-            action : 'cancel_invoice',
-            uid    : invoiceId
-          };
-
-          $.post(myAjax.ajaxurl, data, function(response){
-            $('.cancel_invoice').attr("disabled", false);
-            $('.cancel_invoice').html('Cancelar');
-            bootbox.alert(response.message);
-          }, "json");
-        }else{
-          $('.cancel_invoice').attr("disabled", false);
-          $('.cancel_invoice').html('Cancelar');
-        }
-
-
-      }
-    });
-
+    
+    console.log(myAjax);
 
   });
 
@@ -450,7 +477,7 @@ jQuery(document).ready( function($) {
             calculate_tax = 0.16;
             pre_unit_price = Number(products[key]['total']/products[key]['quantity']);
             tax = Number(pre_unit_price * calculate_tax);
-            taxes=taxes+tax;
+            taxes = taxes + (tax * products[key]['quantity']);
             unit_price = Number(pre_unit_price);
           }
           else{
@@ -463,14 +490,14 @@ jQuery(document).ready( function($) {
           calculate_tax = 0.16;
           pre_unit_price = Number(products[key]['total']/products[key]['quantity']);
           tax = Number(pre_unit_price * calculate_tax);
-          taxes=taxes+tax;
+          taxes = taxes + (tax * products[key]['quantity']);
           unit_price = Number(pre_unit_price);
         }
         else{
           calculate_tax = 0.16;
           pre_unit_price = Number(products[key]['total']/products[key]['quantity']);
           tax = Number(pre_unit_price * calculate_tax);
-          taxes=taxes+tax;
+          taxes = taxes + (tax * products[key]['quantity']);
           unit_price = Number(pre_unit_price);
         }
       }
@@ -827,7 +854,7 @@ jQuery(document).ready( function($) {
         return false;
       }
 
-      if(!response.success){
+      if(!response.success) {
         var inst = $('[data-remodal-id=respuesta-paso-uno]').remodal();
         $('#message-response-one').text(response.message);
         inst.open();
